@@ -1,49 +1,51 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-br">
 <head>
-<meta charset="UTF-8">
-<title>Controle de Estoque - Bar</title>
-<style>
-:root{--bg:#0f172a; --card:#1e293b; --text:#e2e8f0; --accent:#22c55e; --alert:#f87171; --edit:#3b82f6;}
-body{margin:0; font-family:system-ui,Arial; background:var(--bg); color:var(--text);}
-header{padding:20px; text-align:center; background:#1e293b;}
-h1{margin:0; font-size:1.5rem;}
-nav{display:flex; flex-wrap:wrap; justify-content:center; gap:10px; padding:15px; background:#1e293b; border-bottom:2px solid #334155;}
-nav button{background:#334155; color:var(--text); padding:10px 20px; border:none; border-radius:8px; cursor:pointer; font-weight:bold;}
-nav button.active{background:var(--accent); color:#0f172a;}
-.container{max-width:1000px; margin:20px auto; padding:0 15px;}
-.card{background:var(--card); padding:20px; border-radius:12px; margin-bottom:20px;}
-.section{display:none;}
-.section.active{display:block;}
-input, select, button{padding:10px; border:none; border-radius:8px; font-size:1rem;}
-input, select{width:100%; background:#334155; color:var(--text); margin:8px 0;}
-button{cursor:pointer; background:var(--accent); color:#0f172a; font-weight:bold;}
-button:hover{opacity:0.9;}
-.btn-edit{background:var(--edit); color:#fff; padding:6px 12px; font-size:0.9rem; margin-right:5px;}
-.btn-alert{background:var(--alert); color:#0f172a; padding:8px 16px; margin-bottom:15px; margin-right:10px;}
-.total-box{background:#334155; padding:15px; border-radius:8px; margin:15px 0; text-align:center; font-size:1.2rem;}
-.total-box span{color:var(--accent); font-weight:bold;}
-.grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:10px;}
-table{width:100%; border-collapse:collapse; margin-top:15px; font-size:0.95rem;}
-th,td{padding:10px; text-align:left; border-bottom:1px solid #334155;}
-th{background:#334155;}
-.badge{padding:4px 8px; border-radius:6px; font-size:0.85rem;}
-.badge.ok{background:var(--accent); color:#0f172a;}
-.badge.low{background:var(--alert); color:#0f172a;}
-.badge.entrada{background:var(--accent); color:#0f172a;}
-.badge.saida{background:var(--alert); color:#0f172a;}
-.sincro{font-size:12px; color:var(--accent); text-align:center; margin-top:10px;}
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>🍻 Controle de Estoque - Bar</title>
+  <style>
+    :root{--bg:#0f172a;--card:#1e293b;--accent:#3b82f6;--text:#f1f5f9;--muted:#94a3b8;--ok:#22c55e;--warn:#f59e0b;--danger:#ef4444}
+    *{box-sizing:border-box;margin:0;padding:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu}
+    body{background:var(--bg);color:var(--text)}
+    header{padding:16px;text-align:center;background:linear-gradient(90deg,#1e293b,#0f172a);border-bottom:1px solid #334155}
+    h1{font-size:20px;color:var(--accent)}
+    nav{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;padding:12px;background:#111827;position:sticky;top:0;z-index:10}
+    nav button{padding:8px 14px;border:none;border-radius:8px;background:#1f2937;color:var(--text);cursor:pointer;font-weight:600}
+    nav button.active{background:var(--accent)}
+   .container{max-width:1000px;margin:20px auto;padding:0 12px}
+   .card{background:var(--card);border:1px solid #334155;border-radius:12px;padding:16px;margin-bottom:16px;box-shadow:0 4px 12px rgba(0,0,0,.3)}
+    h2{margin-bottom:12px;color:var(--accent);font-size:18px}
+   .grid{display:grid;gap:10px}
+    @media(min-width:600px){.grid{grid-template-columns:repeat(3,1fr)}}
+    input,select,button{padding:10px;border-radius:8px;border:1px solid #334155;background:#0b1220;color:var(--text);font-size:14px}
+    button{cursor:pointer;background:var(--accent);font-weight:700;border:none}
+    button:hover{filter:brightness(1.1)}
+    table{width:100%;border-collapse:collapse;margin-top:10px;font-size:14px}
+    th,td{padding:10px;text-align:left;border-bottom:1px solid #334155}
+    th{color:var(--muted);font-weight:600}
+   .badge{padding:3px 8px;border-radius:6px;font-size:12px;font-weight:700}
+   .ok{background:rgba(34,197,94,.2);color:var(--ok)}
+   .low{background:rgba(245,158,11,.2);color:var(--warn)}
+   .entrada{background:rgba(34,197,94,.2);color:var(--ok)}
+   .saida{background:rgba(239,68,68,.2);color:var(--danger)}
+   .btn-edit{background:#475569;padding:4px 8px;font-size:12px}
+   .btn-alert{background:var(--danger)}
+   .total-box{background:#0b1220;border:1px solid #334155;padding:12px;border-radius:8px;margin:10px 0;font-weight:700;text-align:center}
+   .section{display:none}
+   .section.active{display:block}
+   .sincro{font-size:12px;color:var(--muted);text-align:center;margin-top:10px;}
+  </style>
 </head>
 <body>
 <header><h1>🍻 Controle de Estoque - Bar</h1></header>
 
 <nav>
-  <button class="active" onclick="mostrarSecao('cadastro')">Cadastro</button>
-  <button onclick="mostrarSecao('movimentar')">Movimentar</button>
-  <button onclick="mostrarSecao('estoque')">Estoque</button>
-  <button onclick="mostrarSecao('historico')">Histórico</button>
-  <button onclick="mostrarSecao('vendas')">Vendas</button>
+  <button class="active" onclick="mostrarSecao('cadastro', event)">Cadastro</button>
+  <button onclick="mostrarSecao('movimentar', event)">Movimentar</button>
+  <button onclick="mostrarSecao('estoque', event)">Estoque</button>
+  <button onclick="mostrarSecao('historico', event)">Histórico</button>
+  <button onclick="mostrarSecao('vendas', event)">Vendas</button>
 </nav>
 
 <div class="container">
@@ -155,11 +157,12 @@ th{background:#334155;}
     atualizarVendasDia();
   });
 
-  function mostrarSecao(id){
+  // CORREÇÃO: agora recebe o event como parâmetro
+  function mostrarSecao(id, e){
     document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
     document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
     document.getElementById(id).classList.add('active');
-    event.target.classList.add('active');
+    if(e) e.target.classList.add('active');
   }
 
   function atualizarTabela(){
