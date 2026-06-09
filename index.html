@@ -32,6 +32,7 @@ th{background:#334155;}
 .badge.low{background:var(--alert); color:#0f172a;}
 .badge.entrada{background:var(--accent); color:#0f172a;}
 .badge.saida{background:var(--alert); color:#0f172a;}
+.sincro{font-size:12px; color:var(--accent); text-align:center; margin-top:10px;}
 </style>
 </head>
 <body>
@@ -107,202 +108,229 @@ th{background:#334155;}
         <thead><tr><th>Data</th><th>Produto</th><th>Total Vendido</th></tr></thead>
         <tbody></tbody>
       </table>
+      <div class="sincro">Sincronizando em tempo real...</div>
     </div>
   </div>
 </div>
 
-<script>
-let produtos = JSON.parse(localStorage.getItem('produtos')) || [];
-let historico = JSON.parse(localStorage.getItem('historico')) || [];
+<script type="module">
+  // IMPORTA FIREBASE VIA CDN
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getFirestore, collection, addDoc, getDocs, updateDoc, deleteDoc, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-function salvar(){
-  localStorage.setItem('produtos', JSON.stringify(produtos));
-  localStorage.setItem('historico', JSON.stringify(historico));
-}
+  // SUA CONFIG DO FIREBASE
+  const firebaseConfig = {
+    apiKey: "AIzaSyBhgpVrA6Idal5jxedEE1f8_hwx6zfrxMM",
+    authDomain: "bardosmanos-253d0.firebaseapp.com",
+    projectId: "bardosmanos-253d0",
+    storageBucket: "bardosmanos-253d0.firebasestorage.app",
+    messagingSenderId: "301954418949",
+    appId: "1:301954418949:web:2cd1ca3a0ed8ea44fccf6c"
+  };
 
-function mostrarSecao(id){
-  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
-  document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
-  document.getElementById(id).classList.add('active');
-  event.target.classList.add('active');
-}
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+  const produtosRef = collection(db, "produtos");
+  const historicoRef = collection(db, "historico");
 
-function atualizarTudo(){
-  atualizarTabela();
-  atualizarHistorico();
-  atualizarVendasDia();
-}
+  let produtos = [];
+  let historico = [];
 
-function atualizarTabela(){
-  const tbody = document.querySelector('#tabela tbody');
-  const select = document.getElementById('produto');
-  tbody.innerHTML = '';
-  select.innerHTML = '<option value="">Selecione o produto</option>';
-
-  produtos.forEach((p,i)=>{
-    const status = p.estoque <= p.minimo? '<span class="badge low">Baixo</span>' : '<span class="badge ok">OK</span>';
-    tbody.innerHTML += `<tr>
-      <td>${p.nome}</td>
-      <td>${p.estoque}</td>
-      <td>${p.minimo}</td>
-      <td>${status}</td>
-      <td>
-        <button class="btn-edit" onclick="editarEstoque(${i})">Estoque</button>
-        <button class="btn-edit" onclick="editarCadastro(${i})">Cadastro</button>
-      </td>
-    </tr>`;
-    select.innerHTML += `<option value="${i}">${p.nome}</option>`;
-  });
-}
-
-function atualizarHistorico(){
-  const tbody = document.querySelector('#historicoTable tbody');
-  tbody.innerHTML = '';
-  historico.slice().reverse().forEach(h=>{
-    const badge = h.tipo === 'entrada'? '<span class="badge entrada">Entrada</span>' : '<span class="badge saida">Saída</span>';
-    tbody.innerHTML += `<tr>
-      <td>${h.data}</td>
-      <td>${h.produto}</td>
-      <td>${badge}</td>
-      <td>${h.qtd}</td>
-    </tr>`;
-  });
-}
-
-function atualizarVendasDia(){
-  const tbody = document.querySelector('#vendasDia tbody');
-  const filtroData = document.getElementById('filtroData').value;
-  const vendas = {};
-  let totalGeral = 0;
-
-  historico.forEach(h=>{
-    if(h.tipo === 'saida'){
-      const dataCompleta = h.data.split(' ')[0];
-      const [dia, mes, ano] = dataCompleta.split('/');
-      const dataISO = `${ano}-${mes.padStart(2,'0')}-${dia.padStart(2,'0')}`;
-
-      if(!filtroData || filtroData === dataISO){
-        const chave = dataCompleta + '|' + h.produto;
-        vendas[chave] = (vendas[chave] || 0) + h.qtd;
-        totalGeral += h.qtd;
-      }
-    }
+  // ESCUTA MUDANÇAS EM TEMPO REAL
+  onSnapshot(produtosRef, (snapshot) => {
+    produtos = [];
+    snapshot.forEach(docSnap => {
+      produtos.push({id: docSnap.id,...docSnap.data()});
+    });
+    atualizarTabela();
+    atualizarVendasDia();
   });
 
-  tbody.innerHTML = '';
-  Object.keys(vendas).sort().reverse().forEach(chave=>{
-    const [data, produto] = chave.split('|');
-    tbody.innerHTML += `<tr>
-      <td>${data}</td>
-      <td>${produto}</td>
-      <td>${vendas[chave]}</td>
-    </tr>`;
-  });
-
-  document.getElementById('totalDia').textContent = totalGeral;
-
-  if(Object.keys(vendas).length === 0){
-    tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; color:#94a3b8;">Nenhuma venda registrada</td></tr>';
-  }
-}
-
-function limparFiltro(){
-  document.getElementById('filtroData').value = '';
-  atualizarVendasDia();
-}
-
-function exportarExcel(){
-  const filtroData = document.getElementById('filtroData').value;
-  let csv = 'Data,Produto,Quantidade\n';
-  let total = 0;
-
-  historico.forEach(h=>{
-    if(h.tipo === 'saida'){
-      const dataCompleta = h.data.split(' ')[0];
-      const [dia, mes, ano] = dataCompleta.split('/');
-      const dataISO = `${ano}-${mes.padStart(2,'0')}-${dia.padStart(2,'0')}`;
-
-      if(!filtroData || filtroData === dataISO){
-        csv += `${dataCompleta},${h.produto},${h.qtd}\n`;
-        total += h.qtd;
-      }
-    }
-  });
-
-  csv += `\nTotal Geral,${total},`;
-
-  const blob = new Blob([csv], {type: 'text/csv;charset=utf-8;'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filtroData? `vendas_${filtroData}.csv` : 'vendas_todas.csv';
-  a.click();
-}
-
-function cadastrar(){
-  const nome = document.getElementById('nome').value.trim();
-  const estoque = parseInt(document.getElementById('estoque').value);
-  const minimo = parseInt(document.getElementById('minimo').value);
-  if(!nome || isNaN(estoque) || isNaN(minimo)) return alert('Preencha tudo!');
-  produtos.push({nome, estoque, minimo});
-  salvar(); atualizarTudo();
-  document.getElementById('nome').value = '';
-  document.getElementById('estoque').value = '';
-  document.getElementById('minimo').value = '';
-  alert('Produto cadastrado!');
-}
-
-function movimentar(){
-  const idx = document.getElementById('produto').value;
-  const tipo = document.getElementById('tipo').value;
-  const qtd = parseInt(document.getElementById('qtd').value);
-  if(idx === '' || isNaN(qtd) || qtd <= 0) return alert('Preencha certo!');
-
-  if(tipo === 'entrada') produtos[idx].estoque += qtd;
-  else {
-    if(produtos[idx].estoque < qtd) return alert('Estoque insuficiente!');
-    produtos[idx].estoque -= qtd;
-  }
-
-  const agora = new Date().toLocaleString('pt-BR');
-  historico.push({data: agora, produto: produtos[idx].nome, tipo, qtd});
-
-  salvar(); atualizarTudo();
-  document.getElementById('qtd').value = '';
-  alert('Movimentação registrada!');
-}
-
-function editarEstoque(idx){
-  const novoEstoque = prompt(`Novo estoque para ${produtos[idx].nome}:`, produtos[idx].estoque);
-  if(novoEstoque === null) return;
-  const val = parseInt(novoEstoque);
-  if(isNaN(val) || val < 0) return alert('Valor inválido!');
-  produtos[idx].estoque = val;
-  salvar(); atualizarTabela();
-}
-
-function editarCadastro(idx){
-  const novoNome = prompt(`Novo nome para o produto:`, produtos[idx].nome);
-  if(novoNome === null) return;
-  const novoMinimo = prompt(`Novo estoque mínimo:`, produtos[idx].minimo);
-  if(novoMinimo === null) return;
-  const val = parseInt(novoMinimo);
-  if(!novoNome.trim() || isNaN(val) || val < 0) return alert('Valor inválido!');
-
-  produtos[idx].nome = novoNome.trim();
-  produtos[idx].minimo = val;
-  salvar(); atualizarTudo();
-}
-
-function zerarHistorico(){
-  if(confirm('Tem certeza que quer apagar todo o histórico? Isso não pode ser desfeito.')){
+  onSnapshot(historicoRef, (snapshot) => {
     historico = [];
-    salvar();
-    atualizarTudo();
-  }
-}
+    snapshot.forEach(docSnap => {
+      historico.push({id: docSnap.id,...docSnap.data()});
+    });
+    atualizarHistorico();
+    atualizarVendasDia();
+  });
 
-atualizarTudo();
+  function mostrarSecao(id){
+    document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+    document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    event.target.classList.add('active');
+  }
+
+  function atualizarTabela(){
+    const tbody = document.querySelector('#tabela tbody');
+    const select = document.getElementById('produto');
+    tbody.innerHTML = '';
+    select.innerHTML = '<option value="">Selecione o produto</option>';
+
+    produtos.forEach((p)=>{
+      const status = p.estoque <= p.minimo? '<span class="badge low">Baixo</span>' : '<span class="badge ok">OK</span>';
+      tbody.innerHTML += `<tr>
+        <td>${p.nome}</td>
+        <td>${p.estoque}</td>
+        <td>${p.minimo}</td>
+        <td>${status}</td>
+        <td>
+          <button class="btn-edit" onclick="editarEstoque('${p.id}')">Estoque</button>
+          <button class="btn-edit" onclick="editarCadastro('${p.id}')">Cadastro</button>
+        </td>
+      </tr>`;
+      select.innerHTML += `<option value="${p.id}">${p.nome}</option>`;
+    });
+  }
+
+  function atualizarHistorico(){
+    const tbody = document.querySelector('#historicoTable tbody');
+    tbody.innerHTML = '';
+    historico.slice().reverse().forEach(h=>{
+      const badge = h.tipo === 'entrada'? '<span class="badge entrada">Entrada</span>' : '<span class="badge saida">Saída</span>';
+      tbody.innerHTML += `<tr>
+        <td>${h.data}</td>
+        <td>${h.produto}</td>
+        <td>${badge}</td>
+        <td>${h.qtd}</td>
+      </tr>`;
+    });
+  }
+
+  function atualizarVendasDia(){
+    const tbody = document.querySelector('#vendasDia tbody');
+    const filtroData = document.getElementById('filtroData').value;
+    const vendas = {};
+    let totalGeral = 0;
+
+    historico.forEach(h=>{
+      if(h.tipo === 'saida'){
+        const dataCompleta = h.data.split(' ')[0];
+        const [dia, mes, ano] = dataCompleta.split('/');
+        const dataISO = `${ano}-${mes.padStart(2,'0')}-${dia.padStart(2,'0')}`;
+
+        if(!filtroData || filtroData === dataISO){
+          const chave = dataCompleta + '|' + h.produto;
+          vendas[chave] = (vendas[chave] || 0) + h.qtd;
+          totalGeral += h.qtd;
+        }
+      }
+    });
+
+    tbody.innerHTML = '';
+    Object.keys(vendas).sort().reverse().forEach(chave=>{
+      const [data, produto] = chave.split('|');
+      tbody.innerHTML += `<tr>
+        <td>${data}</td>
+        <td>${produto}</td>
+        <td>${vendas[chave]}</td>
+      </tr>`;
+    });
+
+    document.getElementById('totalDia').textContent = totalGeral;
+
+    if(Object.keys(vendas).length === 0){
+      tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; color:#94a3b8;">Nenhuma venda registrada</td></tr>';
+    }
+  }
+
+  window.limparFiltro = () => {
+    document.getElementById('filtroData').value = '';
+    atualizarVendasDia();
+  }
+
+  window.exportarExcel = () => {
+    const filtroData = document.getElementById('filtroData').value;
+    let csv = 'Data,Produto,Quantidade\n';
+    let total = 0;
+
+    historico.forEach(h=>{
+      if(h.tipo === 'saida'){
+        const dataCompleta = h.data.split(' ')[0];
+        const [dia, mes, ano] = dataCompleta.split('/');
+        const dataISO = `${ano}-${mes.padStart(2,'0')}-${dia.padStart(2,'0')}`;
+
+        if(!filtroData || filtroData === dataISO){
+          csv += `${dataCompleta},${h.produto},${h.qtd}\n`;
+          total += h.qtd;
+        }
+      }
+    });
+
+    csv += `\nTotal Geral,${total},`;
+
+    const blob = new Blob([csv], {type: 'text/csv;charset=utf-8;'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filtroData? `vendas_${filtroData}.csv` : 'vendas_todas.csv';
+    a.click();
+  }
+
+  window.cadastrar = async () => {
+    const nome = document.getElementById('nome').value.trim();
+    const estoque = parseInt(document.getElementById('estoque').value);
+    const minimo = parseInt(document.getElementById('minimo').value);
+    if(!nome || isNaN(estoque) || isNaN(minimo)) return alert('Preencha tudo!');
+    await addDoc(produtosRef, {nome, estoque, minimo});
+    document.getElementById('nome').value = '';
+    document.getElementById('estoque').value = '';
+    document.getElementById('minimo').value = '';
+    alert('Produto cadastrado!');
+  }
+
+  window.movimentar = async () => {
+    const id = document.getElementById('produto').value;
+    const tipo = document.getElementById('tipo').value;
+    const qtd = parseInt(document.getElementById('qtd').value);
+    if(!id || isNaN(qtd) || qtd <= 0) return alert('Preencha certo!');
+
+    const produto = produtos.find(p=>p.id===id);
+    if(!produto) return;
+
+    let novoEstoque = produto.estoque;
+    if(tipo === 'entrada') novoEstoque += qtd;
+    else {
+      if(produto.estoque < qtd) return alert('Estoque insuficiente!');
+      novoEstoque -= qtd;
+    }
+
+    await updateDoc(doc(db, "produtos", id), {estoque: novoEstoque});
+
+    const agora = new Date().toLocaleString('pt-BR');
+    await addDoc(historicoRef, {data: agora, produto: produto.nome, tipo, qtd});
+
+    document.getElementById('qtd').value = '';
+    alert('Movimentação registrada!');
+  }
+
+  window.editarEstoque = async (id) => {
+    const produto = produtos.find(p=>p.id===id);
+    const novoEstoque = prompt(`Novo estoque para ${produto.nome}:`, produto.estoque);
+    if(novoEstoque === null) return;
+    const val = parseInt(novoEstoque);
+    if(isNaN(val) || val < 0) return alert('Valor inválido!');
+    await updateDoc(doc(db, "produtos", id), {estoque: val});
+  }
+
+  window.editarCadastro = async (id) => {
+    const produto = produtos.find(p=>p.id===id);
+    const novoNome = prompt(`Novo nome para o produto:`, produto.nome);
+    if(novoNome === null) return;
+    const novoMinimo = prompt(`Novo estoque mínimo:`, produto.minimo);
+    if(novoMinimo === null) return;
+    const val = parseInt(novoMinimo);
+    if(!novoNome.trim() || isNaN(val) || val < 0) return alert('Valor inválido!');
+    await updateDoc(doc(db, "produtos", id), {nome: novoNome.trim(), minimo: val});
+  }
+
+  window.zerarHistorico = async () => {
+    if(confirm('Tem certeza que quer apagar todo o histórico? Isso não pode ser desfeito.')){
+      const deletar = historico.map(h=>deleteDoc(doc(db, "historico", h.id)));
+      await Promise.all(deletar);
+    }
+  }
 </script>
 </body>
 </html>
