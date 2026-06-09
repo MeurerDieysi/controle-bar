@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Controle de Estoque - Bar</title>
+<style>
+:root{--bg:#0f172a; --card:#1e293b; --text:#e2e8f0; --accent:#22c55e; --alert:#f87171; --edit:#3b82f6;}
+body{margin:0; font-family:system-ui,Arial; background:var(--bg); color:var(--text);}
+header{padding:20px; text-align:center; background:#1e293b;}
+h1{margin:0; font-size:1.5rem;}
+nav{display:flex; flex-wrap:wrap; justify-content:center; gap:10px; padding:15px; background:#1e293b; border-bottom:2px solid #334155;}
+nav button{background:#334155; color:var(--text); padding:10px 20px; border:none; border-radius:8px; cursor:pointer; font-weight:bold;}
+nav button.active{background:var(--accent); color:#0f172a;}
+.container{max-width:1000px; margin:20px auto; padding:0 15px;}
+.card{background:var(--card); padding:20px; border-radius:12px; margin-bottom:20px;}
+.section{display:none;}
+.section.active{display:block;}
+input, select, button{padding:10px; border:none; border-radius:8px; font-size:1rem;}
+input, select{width:100%; background:#334155; color:var(--text); margin:8px 0;}
+button{cursor:pointer; background:var(--accent); color:#0f172a; font-weight:bold;}
+button:hover{opacity:0.9;}
+.btn-edit{background:var(--edit); color:#fff; padding:6px 12px; font-size:0.9rem; margin-right:5px;}
+.btn-alert{background:var(--alert); color:#0f172a; padding:8px 16px; margin-bottom:15px; margin-right:10px;}
+.total-box{background:#334155; padding:15px; border-radius:8px; margin:15px 0; text-align:center; font-size:1.2rem;}
+.total-box span{color:var(--accent); font-weight:bold;}
+.grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:10px;}
+table{width:100%; border-collapse:collapse; margin-top:15px; font-size:0.95rem;}
+th,td{padding:10px; text-align:left; border-bottom:1px solid #334155;}
+th{background:#334155;}
+.badge{padding:4px 8px; border-radius:6px; font-size:0.85rem;}
+.badge.ok{background:var(--accent); color:#0f172a;}
+.badge.low{background:var(--alert); color:#0f172a;}
+.badge.entrada{background:var(--accent); color:#0f172a;}
+.badge.saida{background:var(--alert); color:#0f172a;}
+</style>
+</head>
+<body>
+<header><h1>🍻 Controle de Estoque - Bar</h1></header>
+
+<nav>
+  <button class="active" onclick="mostrarSecao('cadastro')">Cadastro</button>
+  <button onclick="mostrarSecao('movimentar')">Movimentar</button>
+  <button onclick="mostrarSecao('estoque')">Estoque</button>
+  <button onclick="mostrarSecao('historico')">Histórico</button>
+  <button onclick="mostrarSecao('vendas')">Vendas</button>
+</nav>
+
+<div class="container">
+  <div id="cadastro" class="section active">
+    <div class="card">
+      <h2>Cadastrar Produto</h2>
+      <div class="grid">
+        <input id="nome" placeholder="Nome do produto - ex: Coca 350ml">
+        <input id="estoque" type="number" placeholder="Estoque inicial">
+        <input id="minimo" type="number" placeholder="Estoque mínimo pra alerta">
+      </div>
+      <button onclick="cadastrar()">Adicionar Produto</button>
+    </div>
+  </div>
+
+  <div id="movimentar" class="section">
+    <div class="card">
+      <h2>Movimentar Estoque</h2>
+      <div class="grid">
+        <select id="produto"></select>
+        <select id="tipo">
+          <option value="entrada">Entrada - Compra/Reposição</option>
+          <option value="saida">Saída - Venda/Consumo</option>
+        </select>
+        <input id="qtd" type="number" placeholder="Quantidade">
+      </div>
+      <button onclick="movimentar()">Registrar</button>
+    </div>
+  </div>
+
+  <div id="estoque" class="section">
+    <div class="card">
+      <h2>Estoque Atual</h2>
+      <table id="tabela">
+        <thead><tr><th>Produto</th><th>Estoque</th><th>Mínimo</th><th>Status</th><th>Ação</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="historico" class="section">
+    <div class="card">
+      <h2>Histórico de Movimentações</h2>
+      <button class="btn-alert" onclick="zerarHistorico()">Zerar Histórico</button>
+      <table id="historicoTable">
+        <thead><tr><th>Data/Hora</th><th>Produto</th><th>Tipo</th><th>Qtd</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="vendas" class="section">
+    <div class="card">
+      <h2>Vendas por Dia</h2>
+      <div class="grid">
+        <input type="date" id="filtroData" onchange="atualizarVendasDia()">
+        <button onclick="exportarExcel()">Exportar Excel</button>
+        <button onclick="limparFiltro()">Mostrar Tudo</button>
+      </div>
+      <div class="total-box">Total vendido no dia: <span id="totalDia">0</span> unidades</div>
+      <table id="vendasDia">
+        <thead><tr><th>Data</th><th>Produto</th><th>Total Vendido</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+let produtos = JSON.parse(localStorage.getItem('produtos')) || [];
+let historico = JSON.parse(localStorage.getItem('historico')) || [];
+
+function salvar(){
+  localStorage.setItem('produtos', JSON.stringify(produtos));
+  localStorage.setItem('historico', JSON.stringify(historico));
+}
+
+function mostrarSecao(id){
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  event.target.classList.add('active');
+}
+
+function atualizarTudo(){
+  atualizarTabela();
+  atualizarHistorico();
+  atualizarVendasDia();
+}
+
+function atualizarTabela(){
+  const tbody = document.querySelector('#tabela tbody');
+  const select = document.getElementById('produto');
+  tbody.innerHTML = '';
+  select.innerHTML = '<option value="">Selecione o produto</option>';
+
+  produtos.forEach((p,i)=>{
+    const status = p.estoque <= p.minimo? '<span class="badge low">Baixo</span>' : '<span class="badge ok">OK</span>';
+    tbody.innerHTML += `<tr>
+      <td>${p.nome}</td>
+      <td>${p.estoque}</td>
+      <td>${p.minimo}</td>
+      <td>${status}</td>
+      <td>
+        <button class="btn-edit" onclick="editarEstoque(${i})">Estoque</button>
+        <button class="btn-edit" onclick="editarCadastro(${i})">Cadastro</button>
+      </td>
+    </tr>`;
+    select.innerHTML += `<option value="${i}">${p.nome}</option>`;
+  });
+}
+
+function atualizarHistorico(){
+  const tbody = document.querySelector('#historicoTable tbody');
+  tbody.innerHTML = '';
+  historico.slice().reverse().forEach(h=>{
+    const badge = h.tipo === 'entrada'? '<span class="badge entrada">Entrada</span>' : '<span class="badge saida">Saída</span>';
+    tbody.innerHTML += `<tr>
+      <td>${h.data}</td>
+      <td>${h.produto}</td>
+      <td>${badge}</td>
+      <td>${h.qtd}</td>
+    </tr>`;
+  });
+}
+
+function atualizarVendasDia(){
+  const tbody = document.querySelector('#vendasDia tbody');
+  const filtroData = document.getElementById('filtroData').value;
+  const vendas = {};
+  let totalGeral = 0;
+
+  historico.forEach(h=>{
+    if(h.tipo === 'saida'){
+      const dataCompleta = h.data.split(' ')[0];
+      const [dia, mes, ano] = dataCompleta.split('/');
+      const dataISO = `${ano}-${mes.padStart(2,'0')}-${dia.padStart(2,'0')}`;
+
+      if(!filtroData || filtroData === dataISO){
+        const chave = dataCompleta + '|' + h.produto;
+        vendas[chave] = (vendas[chave] || 0) + h.qtd;
+        totalGeral += h.qtd;
+      }
+    }
+  });
+
+  tbody.innerHTML = '';
+  Object.keys(vendas).sort().reverse().forEach(chave=>{
+    const [data, produto] = chave.split('|');
+    tbody.innerHTML += `<tr>
+      <td>${data}</td>
+      <td>${produto}</td>
+      <td>${vendas[chave]}</td>
+    </tr>`;
+  });
+
+  document.getElementById('totalDia').textContent = totalGeral;
+
+  if(Object.keys(vendas).length === 0){
+    tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; color:#94a3b8;">Nenhuma venda registrada</td></tr>';
+  }
+}
+
+function limparFiltro(){
+  document.getElementById('filtroData').value = '';
+  atualizarVendasDia();
+}
+
+function exportarExcel(){
+  const filtroData = document.getElementById('filtroData').value;
+  let csv = 'Data,Produto,Quantidade\n';
+  let total = 0;
+
+  historico.forEach(h=>{
+    if(h.tipo === 'saida'){
+      const dataCompleta = h.data.split(' ')[0];
+      const [dia, mes, ano] = dataCompleta.split('/');
+      const dataISO = `${ano}-${mes.padStart(2,'0')}-${dia.padStart(2,'0')}`;
+
+      if(!filtroData || filtroData === dataISO){
+        csv += `${dataCompleta},${h.produto},${h.qtd}\n`;
+        total += h.qtd;
+      }
+    }
+  });
+
+  csv += `\nTotal Geral,${total},`;
+
+  const blob = new Blob([csv], {type: 'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filtroData? `vendas_${filtroData}.csv` : 'vendas_todas.csv';
+  a.click();
+}
+
+function cadastrar(){
+  const nome = document.getElementById('nome').value.trim();
+  const estoque = parseInt(document.getElementById('estoque').value);
+  const minimo = parseInt(document.getElementById('minimo').value);
+  if(!nome || isNaN(estoque) || isNaN(minimo)) return alert('Preencha tudo!');
+  produtos.push({nome, estoque, minimo});
+  salvar(); atualizarTudo();
+  document.getElementById('nome').value = '';
+  document.getElementById('estoque').value = '';
+  document.getElementById('minimo').value = '';
+  alert('Produto cadastrado!');
+}
+
+function movimentar(){
+  const idx = document.getElementById('produto').value;
+  const tipo = document.getElementById('tipo').value;
+  const qtd = parseInt(document.getElementById('qtd').value);
+  if(idx === '' || isNaN(qtd) || qtd <= 0) return alert('Preencha certo!');
+
+  if(tipo === 'entrada') produtos[idx].estoque += qtd;
+  else {
+    if(produtos[idx].estoque < qtd) return alert('Estoque insuficiente!');
+    produtos[idx].estoque -= qtd;
+  }
+
+  const agora = new Date().toLocaleString('pt-BR');
+  historico.push({data: agora, produto: produtos[idx].nome, tipo, qtd});
+
+  salvar(); atualizarTudo();
+  document.getElementById('qtd').value = '';
+  alert('Movimentação registrada!');
+}
+
+function editarEstoque(idx){
+  const novoEstoque = prompt(`Novo estoque para ${produtos[idx].nome}:`, produtos[idx].estoque);
+  if(novoEstoque === null) return;
+  const val = parseInt(novoEstoque);
+  if(isNaN(val) || val < 0) return alert('Valor inválido!');
+  produtos[idx].estoque = val;
+  salvar(); atualizarTabela();
+}
+
+function editarCadastro(idx){
+  const novoNome = prompt(`Novo nome para o produto:`, produtos[idx].nome);
+  if(novoNome === null) return;
+  const novoMinimo = prompt(`Novo estoque mínimo:`, produtos[idx].minimo);
+  if(novoMinimo === null) return;
+  const val = parseInt(novoMinimo);
+  if(!novoNome.trim() || isNaN(val) || val < 0) return alert('Valor inválido!');
+
+  produtos[idx].nome = novoNome.trim();
+  produtos[idx].minimo = val;
+  salvar(); atualizarTudo();
+}
+
+function zerarHistorico(){
+  if(confirm('Tem certeza que quer apagar todo o histórico? Isso não pode ser desfeito.')){
+    historico = [];
+    salvar();
+    atualizarTudo();
+  }
+}
+
+atualizarTudo();
+</script>
+</body>
+</html>
