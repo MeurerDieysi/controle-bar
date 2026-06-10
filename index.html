@@ -54,7 +54,7 @@
       <h2>Cadastrar Produto</h2>
       <div class="grid">
         <input id="nome" placeholder="Nome do produto - ex: Coca 350ml">
-        <input id="estoque" type="number" placeholder="Estoque inicial">
+        <input id="estoqueInicial" type="number" placeholder="Estoque inicial">
         <input id="minimo" type="number" placeholder="Estoque mínimo pra alerta">
       </div>
       <button onclick="cadastrar()">Adicionar Produto</button>
@@ -63,7 +63,7 @@
 
   <div id="movimentar" class="section">
     <div class="card">
-      <h2>Movimentar Estoque Entradas/Saídas</h2>
+      <h2>Movimentar Estoque</h2>
       <div class="grid">
         <select id="produto"></select>
         <select id="tipo">
@@ -270,7 +270,7 @@
 
   window.cadastrar = async () => {
     const nome = document.getElementById('nome').value.trim();
-    const estoque = parseInt(document.getElementById('estoque').value);
+    const estoque = parseInt(document.getElementById('estoqueInicial').value) || 0;
     const minimo = parseInt(document.getElementById('minimo').value);
     if(!nome || isNaN(estoque) || isNaN(minimo)) return alert('Preencha tudo!');
     await addDoc(produtosRef, {nome, estoque, minimo});
