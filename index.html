@@ -13,28 +13,31 @@
     nav{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;padding:12px;background:#111827;position:sticky;top:0;z-index:10}
     nav button{padding:8px 14px;border:none;border-radius:8px;background:#1f2937;color:var(--text);cursor:pointer;font-weight:600}
     nav button.active{background:var(--accent)}
- .container{max-width:1000px;margin:20px auto;padding:0 12px}
- .card{background:var(--card);border:1px solid #334155;border-radius:12px;padding:16px;margin-bottom:16px;box-shadow:0 4px 12px rgba(0,0,0,.3)}
+.container{max-width:1200px;margin:20px auto;padding:0 12px}
+.card{background:var(--card);border:1px solid #334155;border-radius:12px;padding:16px;margin-bottom:16px;box-shadow:0 4px 12px rgba(0,0,0,.3)}
     h2{margin-bottom:12px;color:var(--accent);font-size:18px}
- .grid{display:grid;gap:10px}
-    @media(min-width:600px){.grid{grid-template-columns:repeat(3,1fr)}}
+.grid{display:grid;gap:10px}
+    @media(min-width:600px){.grid{grid-template-columns:repeat(5,1fr)}}
     input,select,button{padding:10px;border-radius:8px;border:1px solid #334155;background:#0b1220;color:var(--text);font-size:14px}
     button{cursor:pointer;background:var(--accent);font-weight:700;border:none}
     button:hover{filter:brightness(1.1)}
     table{width:100%;border-collapse:collapse;margin-top:10px;font-size:14px}
     th,td{padding:10px;text-align:left;border-bottom:1px solid #334155}
     th{color:var(--muted);font-weight:600}
- .badge{padding:3px 8px;border-radius:6px;font-size:12px;font-weight:700}
- .ok{background:rgba(34,197,94,.2);color:var(--ok)}
- .low{background:rgba(245,158,11,.2);color:var(--warn)}
- .entrada{background:rgba(34,197,94,.2);color:var(--ok)}
- .saida{background:rgba(239,68,68,.2);color:var(--danger)}
- .btn-edit{background:#475569;padding:4px 8px;font-size:12px}
- .btn-alert{background:var(--danger)}
- .total-box{background:#0b1220;border:1px solid #334155;padding:12px;border-radius:8px;margin:10px 0;font-weight:700;text-align:center}
- .section{display:none}
- .section.active{display:block}
- .sincro{font-size:12px;color:var(--muted);text-align:center;margin-top:10px;}
+.badge{padding:3px 8px;border-radius:6px;font-size:12px;font-weight:700}
+.ok{background:rgba(34,197,94,.2);color:var(--ok)}
+.low{background:rgba(245,158,11,.2);color:var(--warn)}
+.entrada{background:rgba(34,197,94,.2);color:var(--ok)}
+.saida{background:rgba(239,68,68,.2);color:var(--danger)}
+.btn-edit{background:#475569;padding:4px 8px;font-size:12px}
+.btn-alert{background:var(--danger)}
+.total-box{background:#0b1220;border:1px solid #334155;padding:12px;border-radius:8px;margin:10px 0;font-weight:700;text-align:center;display:grid;gap:8px}
+ @media(min-width:600px){.total-box{grid-template-columns:repeat(4,1fr)}}
+.total-box div{padding:8px;background:#1e293b;border-radius:6px}
+.lucro{color:var(--ok)}
+.section{display:none}
+.section.active{display:block}
+.sincro{font-size:12px;color:var(--muted);text-align:center;margin-top:10px;}
   </style>
 </head>
 <body>
@@ -53,9 +56,11 @@
     <div class="card">
       <h2>Cadastrar Produto</h2>
       <div class="grid">
-        <input id="nome" placeholder="Nome do produto - ex: Coca 350ml">
+        <input id="nome" placeholder="Nome - ex: Coca 350ml">
         <input id="estoqueInicial" type="number" placeholder="Estoque inicial">
-        <input id="minimo" type="number" placeholder="Estoque mínimo pra alerta">
+        <input id="minimo" type="number" placeholder="Estoque mínimo">
+        <input id="custo" type="number" step="0.01" placeholder="Custo R$">
+        <input id="preco" type="number" step="0.01" placeholder="Venda R$">
       </div>
       <button onclick="cadastrar()">Adicionar Produto</button>
     </div>
@@ -64,7 +69,7 @@
   <div id="movimentar" class="section">
     <div class="card">
       <h2>Movimentar Estoque</h2>
-      <div class="grid">
+      <div class="grid" style="grid-template-columns:repeat(3,1fr)">
         <select id="produto"></select>
         <select id="tipo">
           <option value="entrada">Entrada - Compra/Reposição</option>
@@ -80,7 +85,7 @@
     <div class="card">
       <h2>Estoque Atual</h2>
       <table id="tabela">
-        <thead><tr><th>Produto</th><th>Estoque</th><th>Mínimo</th><th>Status</th><th>Ação</th></tr></thead>
+        <thead><tr><th>Produto</th><th>Estoque</th><th>Mín.</th><th>Custo</th><th>Venda</th><th>Margem</th><th>Status</th><th>Ação</th></tr></thead>
         <tbody></tbody>
       </table>
     </div>
@@ -100,14 +105,19 @@
   <div id="vendas" class="section">
     <div class="card">
       <h2>Vendas por Dia</h2>
-      <div class="grid">
+      <div class="grid" style="grid-template-columns:repeat(3,1fr)">
         <input type="date" id="filtroData" onchange="atualizarVendasDia()">
         <button onclick="exportarExcel()">Exportar Excel</button>
         <button onclick="limparFiltro()">Mostrar Tudo</button>
       </div>
-      <div class="total-box">Total vendido no dia: <span id="totalDia">0</span> unidades</div>
+      <div class="total-box">
+        <div>Unidades: <span id="totalDia">0</span></div>
+        <div>Faturamento: R$ <span id="faturamentoTotal">0.00</span></div>
+        <div>Custo: R$ <span id="custoTotal">0.00</span></div>
+        <div class="lucro">Lucro: R$ <span id="lucroTotal">0.00</span></div>
+      </div>
       <table id="vendasDia">
-        <thead><tr><th>Data</th><th>Produto</th><th>Total Vendido</th></tr></thead>
+        <thead><tr><th>Data</th><th>Produto</th><th>Qtd</th><th>Custo Un.</th><th>Venda Un.</th><th>Faturamento</th><th>Lucro</th></tr></thead>
         <tbody></tbody>
       </table>
       <div class="sincro">Sincronizando em tempo real...</div>
@@ -169,10 +179,16 @@
 
     produtos.forEach((p)=>{
       const status = p.estoque <= p.minimo? '<span class="badge low">Baixo</span>' : '<span class="badge ok">OK</span>';
+      const custo = p.custo? `R$ ${p.custo.toFixed(2)}` : '-';
+      const preco = p.preco? `R$ ${p.preco.toFixed(2)}` : '-';
+      const margem = p.custo && p.preco && p.custo > 0? `${(((p.preco - p.custo) / p.custo) * 100).toFixed(0)}%` : '-';
       tbody.innerHTML += `<tr>
         <td>${p.nome}</td>
         <td>${p.estoque}</td>
         <td>${p.minimo}</td>
+        <td>${custo}</td>
+        <td>${preco}</td>
+        <td>${margem}</td>
         <td>${status}</td>
         <td>
           <button class="btn-edit" onclick="editarEstoque('${p.id}')">Estoque</button>
@@ -203,6 +219,8 @@
     const filtroData = document.getElementById('filtroData').value;
     const vendas = {};
     let totalGeral = 0;
+    let faturamentoGeral = 0;
+    let custoGeral = 0;
 
     historico.forEach(h=>{
       if(h.tipo === 'saida'){
@@ -211,9 +229,16 @@
         const dataISO = `${ano}-${mes.padStart(2,'0')}-${dia.padStart(2,'0')}`;
 
         if(!filtroData || filtroData === dataISO){
+          const produtoInfo = produtos.find(p => p.nome === h.produto);
+          const preco = produtoInfo?.preco || 0;
+          const custo = produtoInfo?.custo || 0;
           const chave = dataCompleta + '|' + h.produto;
-          vendas[chave] = (vendas[chave] || 0) + h.qtd;
+          
+          if(!vendas[chave]) vendas[chave] = {qtd: 0, preco: preco, custo: custo};
+          vendas[chave].qtd += h.qtd;
           totalGeral += h.qtd;
+          faturamentoGeral += h.qtd * preco;
+          custoGeral += h.qtd * custo;
         }
       }
     });
@@ -221,17 +246,28 @@
     tbody.innerHTML = '';
     Object.keys(vendas).sort().reverse().forEach(chave=>{
       const [data, produto] = chave.split('|');
+      const v = vendas[chave];
+      const faturamento = v.qtd * v.preco;
+      const custoTotal = v.qtd * v.custo;
+      const lucro = faturamento - custoTotal;
       tbody.innerHTML += `<tr>
         <td>${data}</td>
         <td>${produto}</td>
-        <td>${vendas[chave]}</td>
+        <td>${v.qtd}</td>
+        <td>R$ ${v.custo.toFixed(2)}</td>
+        <td>R$ ${v.preco.toFixed(2)}</td>
+        <td>R$ ${faturamento.toFixed(2)}</td>
+        <td style="color:var(--ok)">R$ ${lucro.toFixed(2)}</td>
       </tr>`;
     });
 
     document.getElementById('totalDia').textContent = totalGeral;
+    document.getElementById('faturamentoTotal').textContent = faturamentoGeral.toFixed(2);
+    document.getElementById('custoTotal').textContent = custoGeral.toFixed(2);
+    document.getElementById('lucroTotal').textContent = (faturamentoGeral - custoGeral).toFixed(2);
 
     if(Object.keys(vendas).length === 0){
-      tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; color:#94a3b8;">Nenhuma venda registrada</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#94a3b8;">Nenhuma venda registrada</td></tr>';
     }
   }
 
@@ -242,8 +278,10 @@
 
   window.exportarExcel = () => {
     const filtroData = document.getElementById('filtroData').value;
-    let csv = 'Data,Produto,Quantidade\n';
-    let total = 0;
+    let csv = 'Data,Produto,Quantidade,Custo Unitario,Venda Unitario,Faturamento,Custo Total,Lucro\n';
+    let totalQtd = 0;
+    let totalFaturamento = 0;
+    let totalCusto = 0;
 
     historico.forEach(h=>{
       if(h.tipo === 'saida'){
@@ -252,13 +290,21 @@
         const dataISO = `${ano}-${mes.padStart(2,'0')}-${dia.padStart(2,'0')}`;
 
         if(!filtroData || filtroData === dataISO){
-          csv += `${dataCompleta},${h.produto},${h.qtd}\n`;
-          total += h.qtd;
+          const produtoInfo = produtos.find(p => p.nome === h.produto);
+          const preco = produtoInfo?.preco || 0;
+          const custo = produtoInfo?.custo || 0;
+          const faturamento = h.qtd * preco;
+          const custoTotal = h.qtd * custo;
+          const lucro = faturamento - custoTotal;
+          csv += `${dataCompleta},${h.produto},${h.qtd},${custo.toFixed(2)},${preco.toFixed(2)},${faturamento.toFixed(2)},${custoTotal.toFixed(2)},${lucro.toFixed(2)}\n`;
+          totalQtd += h.qtd;
+          totalFaturamento += faturamento;
+          totalCusto += custoTotal;
         }
       }
     });
 
-    csv += `\nTotal Geral,${total},`;
+    csv += `\nTotais,,${totalQtd},,,${totalFaturamento.toFixed(2)},${totalCusto.toFixed(2)},${(totalFaturamento - totalCusto).toFixed(2)}`;
 
     const blob = new Blob([csv], {type: 'text/csv;charset=utf-8;'});
     const url = URL.createObjectURL(blob);
@@ -272,11 +318,15 @@
     const nome = document.getElementById('nome').value.trim();
     const estoque = parseInt(document.getElementById('estoqueInicial').value) || 0;
     const minimo = parseInt(document.getElementById('minimo').value);
-    if(!nome || isNaN(estoque) || isNaN(minimo)) return alert('Preencha tudo!');
-    await addDoc(produtosRef, {nome, estoque, minimo});
+    const custo = parseFloat(document.getElementById('custo').value) || 0;
+    const preco = parseFloat(document.getElementById('preco').value) || 0;
+    if(!nome || isNaN(estoque) || isNaN(minimo)) return alert('Preencha nome, estoque e mínimo!');
+    await addDoc(produtosRef, {nome, estoque, minimo, custo, preco});
     document.getElementById('nome').value = '';
     document.getElementById('estoqueInicial').value = '';
     document.getElementById('minimo').value = '';
+    document.getElementById('custo').value = '';
+    document.getElementById('preco').value = '';
     alert('Produto cadastrado!');
   }
 
@@ -320,9 +370,15 @@
     if(novoNome === null) return;
     const novoMinimo = prompt(`Novo estoque mínimo:`, produto.minimo);
     if(novoMinimo === null) return;
-    const val = parseInt(novoMinimo);
-    if(!novoNome.trim() || isNaN(val) || val < 0) return alert('Valor inválido!');
-    await updateDoc(doc(db, "produtos", id), {nome: novoNome.trim(), minimo: val});
+    const novoCusto = prompt(`Novo custo:`, produto.custo || 0);
+    if(novoCusto === null) return;
+    const novoPreco = prompt(`Novo preço de venda:`, produto.preco || 0);
+    if(novoPreco === null) return;
+    const valMin = parseInt(novoMinimo);
+    const valCusto = parseFloat(novoCusto);
+    const valPreco = parseFloat(novoPreco);
+    if(!novoNome.trim() || isNaN(valMin) || valMin < 0 || isNaN(valCusto) || valCusto < 0 || isNaN(valPreco) || valPreco < 0) return alert('Valor inválido!');
+    await updateDoc(doc(db, "produtos", id), {nome: novoNome.trim(), minimo: valMin, custo: valCusto, preco: valPreco});
   }
 
   window.apagarProduto = async (id, nome) => {
